@@ -1,62 +1,138 @@
 import streamlit as st
-import random
-import time
-from streamlit_chat import message
+import tiktoken
+from loguru import logger
+
+from langchain.chains import ConversationalRetrievalChain
+from langchain.chat_models import ChatOpenAI
+
+from langchain.document_loaders import PyPDFLoader
+from langchain.document_loaders import Docx2txtLoader
+from langchain.document_loaders import UnstructuredPowerPointLoader
+
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings import HuggingFaceEmbeddings
+
+from langchain.memory import ConversationBufferMemory
+from langchain.vectorstores import FAISS
+
+# from streamlit_chat import message
+from langchain.callbacks import get_openai_callback
+from langchain.memory import StreamlitChatMessageHistory
+
+def main():
+    st.set_page_config(
+    page_title="DirChat",
+    page_icon=":books:")
+
+    st.title("_Private Data :red[QA Chat]_ :books:")
+
+    if "conversation" not in st.session_state:
+        st.session_state.conversation = None
+
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = None
+
+    if "processComplete" not in st.session_state:
+        st.session_state.processComplete = None
+
+    if 'messages' not in st.session_state:
+        st.session_state['messages'] = [{"role" : "assistant", "content" : "안녕하세요! 주어진 문서에 대해 궁금하신 것이 있으면 언제든 물어봐주세요!"}]
+
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    history = StreamlitChatMessageHistory(key = "chat_messages")
+
+    # Chat logic
+    if query := st.chat_input("질문을 입력해주세요."):
+        st.session_state.messages.append({"role" : "user", "content" : query})
+
+        with st.chat_message("user"):
+            st.markdown(query)
+
+        with st.chat_message("assistant"):
+            chain = st.session_state.conversation
+
+            with st.spinner("Thinking..."):
+                result = chain({"question": query})
+                with get_openai_callback() as cb:
+                    st.session_state.chat_history = result['chat_history']
+                response = result['answer']
+                source_documents = result['source_documents']
+
+                st.markdown(response)
+                with st.expander("참고 문서 확인"):
+                    st.markdown(source_documents[0].metadata['source'], help = source_documents[0].page_content)
+                    st.markdown(source_documents[1].metadata['source'], help = source_documents[1].page_content)
+                    st.markdown(source_documents[2].metadata['source'], help = source_documents[2].page_content)
+                    
 
 
-# 페이지 설정
-st.set_page_config(
-    page_title="RAG 챗봇",
-    page_icon="💬",
-    initial_sidebar_state="expanded"
-)
+# Add assistant message to chat history
+        st.session_state.messages.append({"role": "assistant", "content": response})
 
-# 제목과 소개
-st.title('환영합니다! 👋')
-st.markdown('## 박물관 챗봇')
+def tiktoken_len(text):
+    tokenizer = tiktoken.get_encoding("cl100k_base")
+    tokens = tokenizer.encode(text)
+    return len(tokens)
 
-st.write(""" 박물관 견학 중 모르시는게 있으시면 말씀해주세요. 해당 부분에 대해서 자세하게 설명드리겠습니다.""")
+def get_text(docs):
 
-# 사이드바 
-st.sidebar.header('채팅 내역')
-option = st.sidebar.selectbox(
-    '원하는 기능을 선택하세요:',
-    ['데이터 보기', '차트 보기', '정보']
-)
-
-# 채팅 메시지 함수 (좌우 말풍선 구현)
-def chat_message(message, is_user=True):
-    align = "flex-end" if is_user else "flex-start"
-    bubble_color = "#dcf8c6" if is_user else "#ffffff"
-    avatar = "🧑" if is_user else "🤖"
-
-    st.markdown(f"""
-    <div style="display: flex; justify-content: {align}; margin-bottom: 10px;">
-        <div style="max-width: 70%; background-color: {bubble_color}; 
-                    padding: 10px 15px; border-radius: 15px; font-size: 16px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-            <b>{avatar}</b> {message}
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# user_input = st.text_input("메시지를 입력하세요", key="user_input")
-
-
-input_container = st.container()
-with input_container:
-    st.markdown('<div class="chat-input-container">', unsafe_allow_html=True)
-    user_input = st.text_input("메시지를 입력하세요", key="user_input", label_visibility="collapsed")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    if st.button("보내기"):
-        chat_message(user_input, is_user=True)
-        chat_message("안녕하세요! 무엇을 도와드릴까요?", is_user=False)
-
-    if user_input:
-        # st.session_state.chat_history.append(("user", user_input))
-        # st.session_state.chat_history.append(("bot", "안녕하세요! 무엇을 도와드릴까요?"))
-        # st.experimental_rerun()
-        chat_message(user_input, is_user=True)
-        chat_message("안녕하세요! 무엇을 도와드릴까요?", is_user=False)
+    doc_list = []
     
+    for doc in docs:
+        file_name = doc.name  # doc 객체의 이름을 파일 이름으로 사용
+        with open(file_name, "wb") as file:  # 파일을 doc.name으로 저장
+            file.write(doc.getvalue())
+            logger.info(f"Uploaded {file_name}")
+        if '.pdf' in doc.name:
+            loader = PyPDFLoader(file_name)
+            documents = loader.load_and_split()
+        elif '.docx' in doc.name:
+            loader = Docx2txtLoader(file_name)
+            documents = loader.load_and_split()
+        elif '.pptx' in doc.name:
+            loader = UnstructuredPowerPointLoader(file_name)
+            documents = loader.load_and_split()
+
+        doc_list.extend(documents)
+    return doc_list
+
+
+def get_text_chunks(text):
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=900,
+        chunk_overlap=100,
+        length_function=tiktoken_len
+    )
+    chunks = text_splitter.split_documents(text)
+    return chunks
+
+
+def get_vectorstore(text_chunks):
+    embeddings = HuggingFaceEmbeddings(
+                                        model_name = "jhgan/ko-sroberta-multitask",
+                                        model_kwargs = {'device': 'cpu'},
+                                        # model_kwargs = "auto"
+                                        encode_kwargs = {'normalize_embeddings': True}
+                                        )  
+    vectordb = FAISS.from_documents(text_chunks, embeddings)
+    return vectordb
+
+def get_conversation_chain(vetorestore,openai_api_key):
+    llm = ChatOpenAI(openai_api_key = openai_api_key, model_name = 'gpt-3.5-turbo', temperature = 0)
+    conversation_chain = ConversationalRetrievalChain.from_llm(
+            llm = llm, 
+            chain_type = "stuff", 
+            retriever=vetorestore.as_retriever(search_type = 'mmr', vervose = True), 
+            memory = ConversationBufferMemory(memory_key = 'chat_history', return_messages = True, output_key = 'answer'),
+            get_chat_history = lambda h: h,
+            return_source_documents = True,
+            verbose = True
+        )
+
+    return conversation_chain
+
+if __name__ == '__main__':
+    main()

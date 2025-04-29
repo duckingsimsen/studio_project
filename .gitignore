@@ -1,0 +1,9 @@
+/.chainlit
+/__pycache__
+/myapi
+
+*.pdf
+*.zip
+
+RAG_model.py
+testing.html

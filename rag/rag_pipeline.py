@@ -1,5 +1,7 @@
-# rag_pipeline.py
+from langchain_community.llms import HuggingFaceEndpoint
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
 
-def run_rag_pipeline(question: str) -> str:
-    # 실제로는 여기에 retriever + generator가 들어가야 함
-    return f"RAG 응답입니다. 당신의 질문: '{question}'"
+repo_id = "LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct"
+
+llm = HuggingFaceEndpoint(repo_id = repo_id, max_length = 32768, temperature = 0.1)
