@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pydantic
+streamlit
+requests
+sentence-transformers
+langchain
+langchain-community
+faiss-cpu
+transformers
+torch
+accelerate
+bitsandbytes

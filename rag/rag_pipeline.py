@@ -3,7 +3,7 @@
 import os
 import numpy as np
 from sentence_transformers import SentenceTransformer
-from langchain.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS  # 수정된 import 경로
 from langchain.chains import RetrievalQA
 from langchain.llms import HuggingFacePipeline
 from transformers import (
@@ -13,40 +13,45 @@ from transformers import (
     pipeline as hf_pipeline
 )
 
-
+# 모델 캐시 디렉토리 설정
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "model_cache")
 os.makedirs(CACHE_DIR, exist_ok=True)
 
-
+# KURE 임베딩 모델 로드
 embed_model = SentenceTransformer(
     "nlpai-lab/KURE-v1",
     cache_folder=CACHE_DIR
 )
+
 def embed_query(text: str) -> list[float]:
     """텍스트를 임베딩 벡터로 변환"""
     vec = embed_model.encode(text, convert_to_numpy=True)
     return vec.astype(np.float32).tolist()
 
-
+# FAISS 벡터 DB 로드
 faiss_db = FAISS.load_local(
     "faiss_db_0416",
     embed_query,
     allow_dangerous_deserialization=True
 )
+
 # index_to_docstore_id 키를 문자열로 변환
 faiss_db.index_to_docstore_id = {
     idx: str(doc_id)
     for idx, doc_id in faiss_db.index_to_docstore_id.items()
 }
+
 # docstore 내부 _dict 키도 문자열로 변환
 if hasattr(faiss_db.docstore, '_dict'):
     faiss_db.docstore._dict = {
         str(k): v
         for k, v in faiss_db.docstore._dict.items()
     }
+
+# 검색기 생성
 retriever = faiss_db.as_retriever(search_kwargs={"k": 5})
 
-
+# EXAONE LLM 모델 설정
 exaone_model_id = "LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct"
 quant_config = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -59,6 +64,7 @@ tokenizer = AutoTokenizer.from_pretrained(
     cache_dir=CACHE_DIR,
     use_fast=True
 )
+
 model = AutoModelForCausalLM.from_pretrained(
     exaone_model_id,
     cache_dir=CACHE_DIR,
@@ -67,19 +73,20 @@ model = AutoModelForCausalLM.from_pretrained(
     trust_remote_code=True
 )
 
-
+# HuggingFace LLM 래핑
 textgen_pipeline = hf_pipeline(
     task="text-generation",
     model=model,
     tokenizer=tokenizer,
     return_full_text=False,
-    max_new_tokens=256,
+    max_new_tokens=64,
     do_sample=True,
     temperature=0.7
 )
+
 llm = HuggingFacePipeline(pipeline=textgen_pipeline)
 
-
+# LangChain RAG 체인 구성
 rag_chain = RetrievalQA.from_chain_type(
     llm=llm,
     chain_type="stuff",

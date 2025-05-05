@@ -1,6 +1,23 @@
+import sys
+import os
+import requests
 import streamlit as st
 import time
-from rag_pipeline import run_rag_pipeline  # rag 폴더 안의 rag_pipeline.py
+
+# 상위 디렉토리의 rag_pipeline 사용 시 경로 추가 (현재는 FastAPI 호출로 미사용)
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# from rag.rag_pipeline import run_rag_pipeline
+
+# FastAPI 백엔드에 POST 요청을 보내는 함수
+def query_backend_rag(question: str) -> str:
+    try:
+        response = requests.post(
+            "http://localhost:8000/rag",
+            json={"question": question}
+        )
+        return response.json().get("answer", "[❗️답변을 불러오는 데 실패했습니다]")
+    except Exception as e:
+        return f"[❗️에러 발생: {e}]"
 
 # 페이지 설정
 st.set_page_config(
@@ -50,9 +67,9 @@ if st.button("보내기") and user_input:
     st.session_state.chat_history.append({"role": "user", "content": user_input})
     chat_message(user_input, is_user=True)
 
-    # 2) RAG 파이프라인 호출
+    # 2) FastAPI RAG API 호출
     with st.spinner("답변 생성 중..."):
-        answer = run_rag_pipeline(user_input)
+        answer = query_backend_rag(user_input)
         time.sleep(0.3)  # UX용 딜레이
 
     # 3) 봇 메시지 저장 및 출력
@@ -64,8 +81,6 @@ if st.button("보내기") and user_input:
 
 # 이전 대화 기록 렌더링
 for chat in st.session_state.chat_history:
-    # 이미 화면에 출력된 메시지도 다시 출력되지만,
-    # 스크롤을 유지하기 위해 반복 렌더링합니다.
     if chat["role"] == "user":
         chat_message(chat["content"], is_user=True)
     else:
