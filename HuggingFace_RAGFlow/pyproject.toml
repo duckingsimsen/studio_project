@@ -1,0 +1,37 @@
+[project]
+name = "huggingface-ragflow"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Erick",email = "edcm.erick@gmail.com"}
+]
+readme = "README.md"
+
+
+[tool.ruff.lint]
+select=[
+    # Pyflakes
+    "F",
+    # pycodestyle
+    "E",
+    "W",
+    # isort
+    "I",
+    # pep8-naming
+    "N",
+    # pyupgrade
+    "UP",
+    # flake8-todos
+    "TD",
+    # flake8-tidy-imports
+    "TID",
+    # flake8-import-conventions
+    "ICN",
+    # flake8-bugbear
+    "B",
+    # flake8-bandit
+    "S",
+    # flake8-simplify
+    "SIM"
+]
+

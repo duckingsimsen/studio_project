@@ -1,0 +1,12 @@
+accelerate==1.5.2
+bitsandbytes==0.45.3
+langchain-community==0.3.19
+langchain-core==0.3.44
+langchain-huggingface==0.1.2
+langchain-qdrant==0.2.0
+pypdf==5.3.1
+python-dotenv==1.0.1
+ruff==0.9.10
+streamlit==1.43.2
+torch==2.6.0+cu126
+transformers==4.49.0
