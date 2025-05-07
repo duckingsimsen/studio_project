@@ -130,3 +130,6 @@ HuggingFace_RAGFlow/
 **e-mail:** edcm.erick@gmail.com
 
 Just in case, feel free to create an issue 😊
+
+In .env directory, you need to input your Huggingface token.
+When use need token model
