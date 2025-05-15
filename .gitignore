@@ -7,3 +7,5 @@
 
 RAG_model.py
 testing.html
+rag/__pycache__
+rag/model_cache
