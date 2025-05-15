@@ -53,7 +53,6 @@ def main():
         # Generate response
         with st.chat_message("assistant"), st.spinner("Thinking..."):
             response = st.session_state.chatbot_model.invoke({"question": user_input})
-            print(f"LLM응답: {response}")
             st.write(response)
 
         # Add assistant response to chat history
