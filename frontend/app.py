@@ -20,20 +20,17 @@ from langchain.callbacks import get_openai_callback
 from langchain.memory import StreamlitChatMessageHistory
 
 def main():
-    st.set_page_config(
-    page_title="DirChat",
-    page_icon=":books:")
+    st.set_page_config(page_title="DirChat", page_icon=":books:")  # 상단 탭 꾸미는곳
 
     st.title("_Private Data :red[QA Chat]_ :books:")
 
-    if "conversation" not in st.session_state:
+    if "conversation" not in st.session_state: # conversation 초기화 하는 부분
         st.session_state.conversation = None
 
-    if "chat_history" not in st.session_state:
+    if "chat_history" not in st.session_state: 
         st.session_state.chat_history = None
 
-    if "processComplete" not in st.session_state:
-        st.session_state.processComplete = None
+    # with st.sidebar: dl 사이드바 추가하는 부분
 
     if 'messages' not in st.session_state:
         st.session_state['messages'] = [{"role" : "assistant", "content" : "안녕하세요! 주어진 문서에 대해 궁금하신 것이 있으면 언제든 물어봐주세요!"}]
@@ -42,7 +39,7 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    history = StreamlitChatMessageHistory(key = "chat_messages")
+    # history = StreamlitChatMessageHistory(key = "chat_messages")
 
     # Chat logic
     if query := st.chat_input("질문을 입력해주세요."):
@@ -51,10 +48,10 @@ def main():
         with st.chat_message("user"):
             st.markdown(query)
 
-        with st.chat_message("assistant"):
+        with st.chat_message("assistant"): # 질문한 부분을 session_state에 올리는 부분
             chain = st.session_state.conversation
 
-            with st.spinner("Thinking..."):
+            with st.spinner("Thinking..."): # 챗봇이 답을 하는 부분
                 result = chain({"question": query})
                 with get_openai_callback() as cb:
                     st.session_state.chat_history = result['chat_history']
@@ -76,39 +73,6 @@ def tiktoken_len(text):
     tokenizer = tiktoken.get_encoding("cl100k_base")
     tokens = tokenizer.encode(text)
     return len(tokens)
-
-def get_text(docs):
-
-    doc_list = []
-    
-    for doc in docs:
-        file_name = doc.name  # doc 객체의 이름을 파일 이름으로 사용
-        with open(file_name, "wb") as file:  # 파일을 doc.name으로 저장
-            file.write(doc.getvalue())
-            logger.info(f"Uploaded {file_name}")
-        if '.pdf' in doc.name:
-            loader = PyPDFLoader(file_name)
-            documents = loader.load_and_split()
-        elif '.docx' in doc.name:
-            loader = Docx2txtLoader(file_name)
-            documents = loader.load_and_split()
-        elif '.pptx' in doc.name:
-            loader = UnstructuredPowerPointLoader(file_name)
-            documents = loader.load_and_split()
-
-        doc_list.extend(documents)
-    return doc_list
-
-
-def get_text_chunks(text):
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=900,
-        chunk_overlap=100,
-        length_function=tiktoken_len
-    )
-    chunks = text_splitter.split_documents(text)
-    return chunks
-
 
 def get_vectorstore(text_chunks):
     embeddings = HuggingFaceEmbeddings(
