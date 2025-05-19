@@ -1,6 +1,7 @@
 /.chainlit
 /__pycache__
 /myapi
+/RAG_results
 
 *.pdf
 *.zip
