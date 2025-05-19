@@ -1,7 +1,7 @@
 import logging
 import os
+import numpy as np
 
-import torch
 from dotenv import load_dotenv
 from huggingface_hub import login
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -25,12 +25,21 @@ class Embedding:
         """
         try:
             logging.info("Forcing embedding model to run on CPU")
-
-            return HuggingFaceEmbeddings(
+            
+            model = HuggingFaceEmbeddings(
                 model_name=model_name,
-                model_kwargs={"device": "cpu"},           # ⬅️ 반드시 CPU
-                encode_kwargs={"normalize_embeddings": True},
-                multi_process=False                        # ⬅️ CUDA 경합 방지 위해 멀티 프로세스 끔
+                model_kwargs={"device": "cpu"},
+                encode_kwargs={
+                    "normalize_embeddings": True,
+                    # "dtype": "float32"
+                    },
+                multi_process=False
             )
+
+            test_vector = model.embed_query("테스트 문장입니다.")
+            logging.info(f"✅ 테스트 벡터 dtype 확인: {np.array(test_vector).dtype}")
+
+            return model
+
         except Exception as ex:
             raise Exception(f"Error loading HuggingFace embeddings: {ex}") from ex

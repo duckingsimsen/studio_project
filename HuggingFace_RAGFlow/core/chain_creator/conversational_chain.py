@@ -15,6 +15,7 @@ from langchain_core.runnables.history import RunnableWithMessageHistory
 from core.model import LLMModel
 from core.retrieval import Retriever
 from core.utils.logging import setup_logging
+# from core.qa_store.qa_storeage import SaveQA
 
 setup_logging()
 
@@ -24,6 +25,7 @@ class ConversationalChain:
         self._llm_model: LLMModel = LLMModel()
         self._retriever = Retriever()
         self._llm = self._llm_model.create_pipeline()
+        # self.qa_saver = SaveQA()
         self._store: dict = {}
 
     def _get_prompt_template(self) -> ChatPromptTemplate:
@@ -42,28 +44,6 @@ class ConversationalChain:
             return ChatPromptTemplate.from_template(prompt)
         except FileNotFoundError as ex:
             raise ex
-
-    # def _get_chain(self) -> RunnableSequence:
-    #     """
-    #     The function `_get_chain` returns a sequence of operations involving context
-    #     retrieval, prompt template generation, language model processing, and output
-    #     parsing.
-
-    #     Returns:
-    #       The `_get_chain` method returns a `RunnableSequence` object, which is
-    #       constructed by chaining together a series of operations involving context
-    #       retrieval, question extraction, prompt template processing, language model
-    #       application, and output parsing.
-    #     """
-    #     return (
-    #         {
-    #             "context": itemgetter("question") | self._retriever.retrieve(),
-    #             "question": itemgetter("question"),
-    #         }
-    #         | self._get_prompt_template()
-    #         | self._llm
-    #         | StrOutputParser()
-    #     )
 
     def _get_chain(self) -> RunnableSequence:
         def fetch_context(input: dict) -> dict:
@@ -129,3 +109,21 @@ class ConversationalChain:
             input_messages_key="question",
             history_messages_key="history",
         ).with_config(config={"session_id": session_id})
+
+    # def run_chain(self, session_id: str, question: str) -> str:
+    #     chain = self.chain_with_history(session_id)
+    #     answer = chain.invoke({"question": question})
+
+    #     self.qa_saver.save(question, answer)
+
+    #     return answer
+    
+    # def maybe_use_cached_anwer(self, question: str, threshold: float = 0.2):
+    #     results = self.qa_saver.search(question, top_k = 1)
+
+    #     if results:
+    #         doc, score = results[0]
+    #         if score < threshold:
+    #             return doc.page_content
+            
+    #     return None
